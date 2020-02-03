@@ -37,10 +37,11 @@ app.get('/accounts',accountroutes.getAccounts)
 app.get('/accounts/:acc_no',accountroutes.getAccountByAccountNo)
 app.get('/accounts/balance/:acc_no',accountroutes.getAccountBalance)
 // transactions debit and credit
-app.put('/transaction/credit',transactionroutes.creditMoney)
+app.put('/transaction/credit/:type',transactionroutes.creditMoney)
 app.put('/transaction/withdrawal',transactionroutes.withdrawal)
 app.put('/transaction/deposit/:type',transactionroutes.deposit)
 app.get('/transaction',transactionroutes.allTransactions)
+app.get('/transaction/:num',transactionroutes.allTransactionsByAccountNo)
 
 
 app.use((req,res) =>{
