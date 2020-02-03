@@ -12,7 +12,7 @@ app.use((req,res,next)=>{
     res.header('Access-Control-Allow-Origin','*');
     res.header('Access-control-Allow-Headers','*');
     if(req.method === 'OPTIONS'){
-        req.header('Access-Control-Allow-Origin','GET,PUT,POST,DELETE,PATCH');
+        req.header('Access-Control-Allow-Origin','*');
         return res.status(200).json({message:'got'});
     }else{
         return next();
@@ -39,7 +39,8 @@ app.get('/accounts/balance/:acc_no',accountroutes.getAccountBalance)
 // transactions debit and credit
 app.put('/transaction/credit',transactionroutes.creditMoney)
 app.put('/transaction/withdrawal',transactionroutes.withdrawal)
-app.put('/transaction/deposit',transactionroutes.deposit)
+app.put('/transaction/deposit/:type',transactionroutes.deposit)
+app.get('/transaction',transactionroutes.allTransactions)
 
 
 app.use((req,res) =>{
