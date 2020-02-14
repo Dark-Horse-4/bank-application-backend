@@ -1,5 +1,6 @@
 const redis = require('redis')
 const bcrypt = require('bcrypt')
+const jwt  = require('jsonwebtoken')
 
 const redis_Port = process.env.redis_Port || 6379;
 const redisClient = redis.createClient(redis_Port);
@@ -47,18 +48,17 @@ const createUser = async (request, response, next) => {
         })         
     })
     } else {
-      response.send('The user already exist')
+      response.status(400).json({"message":'The user already exist'})
     }
   } else {
-    response.status(400).send('Bad request...!!!')
-
+    response.status(400).json({"message":'Bad request...!!!'})
   }
-  response.status(200).send('user created successfully ...!!!')
+  response.status(200).json({"message":'user created successfully...!!!'})
 };
 
 const userLogin = async (request,response,next) =>{
   const {email, password} = request.body
-  const res = await checkUserAvailability(request.body.email)
+  const res = await checkUserAvailability(email)
 
   if(loginValidate(request.body)){
     if(res.length == 1 ){
@@ -67,79 +67,122 @@ const userLogin = async (request,response,next) =>{
         if(result){
           let {rows } = await pool.query('SELECT id FROM users WHERE email = $1 ', [email])
           console.log(rows[0].id)
-          response.cookie('user_id', rows[0].id, {
-            httpOnly : true,
-            signed : true
-          })
-          response.send('logged in successfully')
+          const user = {
+            user_id : rows[0].id,
+            email : email,
+            password: password
+          }
+          jwt.sign({user}, 'privatekey',(err, token) => {
+            if(err) { console.log(err) } 
+            console.log(typeof token )   
+            response.status(200).json({"token":token});
+          });
         }else{
-          response.send('password did not match')
+          response.status(400).json({"message":'password did not match'})
         }
       })
     }else{
-      response.status(404).send("e-mail id didn't match please re-enter your mail id..")
+      response.status(404).json({"message":"e-mail id didn't match please re-enter your mail id.."})
     }
   }else{
-    response.status(400).send('Bad request...!!')
+    response.status(400).json({"message":'Bad request...!!'})
   }
 }
 
 const getUsers = async (request, response) => {
-  const {rows} =  await pool.query('SELECT role FROM users WHERE id = $1',[request.signedCookies.user_id])
-  
-  if( rows[0].role == "banker" ){
-    pool.query('SELECT * FROM users ORDER BY name ASC', (error, results) => {
-      if (error) {
-        throw error
+  jwt.verify(request.token, 'privatekey', async(err, authorizedData) => {
+    if(err){
+      console.log('ERROR: Could not connect to the protected route');
+      response.status(403).json({"message":"Forbidden"});
+    }else{
+      const {rows} =  await pool.query('SELECT role FROM users WHERE id = $1',[authorizedData.user.user_id])
+      if( rows[0].role == "banker" ){
+        pool.query('SELECT * FROM users ORDER BY name ASC', (error, results) => {
+          if (error) {
+            throw error
+          }
+          if (results.rows.length > 0) {
+            response.status(200).json(results.rows)
+          }else{
+            response.status(404).json({"message":"No data available "})
+          }
+        })
+      }else{
+        response.status(401).json({"message":'Unauthorised user'})
       }
-      if (results.rows.length > 0) {
-        response.json(results.rows)
-      } else {
-        response.send("No data available ")
-      }
-    })
-  }else{
-    response.status(401).send('Unauthorised user')
-  }
-};
+    }
+  })
+}
 
 const getUserById = async(request, response) => {
-  const {rows} = await pool.query('SELECT role FROM users WHERE id = $1',[request.signedCookies.user_id])
-  const id = parseInt(request.params.id)
-   
-  if (rows[0].role == "banker" || id == request.signedCookies.user_id){
-    try {
-      pool.query('SELECT * FROM users WHERE id =$1 ', [id], (error, results) => {
-        if (error) {
-          throw error
+  jwt.verify(request.token, 'privatekey', async(err, authorizedData) => {
+    if(err){
+      console.log('ERROR: Could not connect to the protected route');
+      response.status(403).json({"message":"Forbidden"});
+    }else{
+      const {rows} = await pool.query('SELECT role FROM users WHERE id = $1',[authorizedData.user.user_id])
+      const id = parseInt(request.params.id)
+      if (rows[0].role == "banker" || id == authorizedData.user.user_id){
+        try {
+          pool.query('SELECT * FROM users WHERE id =$1 ', [id], (error, results) => {
+            if (error) {
+              throw error
+            }
+            let data = results.rows
+            if (results.rows.length > 0) {
+              redisClient.setex(id, 30, JSON.stringify(data));
+              response.status(200).json(data);
+            } else {
+              response.status(404).json({"message":"Data not available...!!"});
+            }
+          });
+        } catch (err) {
+          console.error(err);
+          res.status(500);
         }
-        let data = results.rows
-        if (results.rows.length > 0) {
-          redisClient.setex(id, 30, JSON.stringify(data));
-          response.status(200).json(data);
-        } else {
-          response.send("Data not available...!!");
-        }
-      });
-    } catch (err) {
-      console.error(err);
-      res.status(500);
+      }
     }
-  }
+  })
 }
 
 const deleteUserById = async (request, response) => {
-  const {rows} = await pool.query('SELECT role FROM users WHERE id = $1',[request.signedCookies.user_id])
   const id = parseInt(request.params.id)
-
-  if(rows[0].role == "banker"){
-    pool.query('DELETE FROM users WHERE id =$1 ', [id], (error, results) => {
-      if (error) {
-        throw error
-      }
-      response.status(200).send('Deleted the user');
-    });
+  var email;
+  if(id){
+    let {rows} = await pool.query('SELECT email FROM users WHERE id = $1',[id])
+    email = rows
+    console.log(email)    
   }
+  if(email.length == 1){
+    jwt.verify(request.token, 'privatekey', async(err, authorizedData) => {
+      if(err){
+        console.log('ERROR: Could not connect to the protected route');
+        response.status(403).json({"message":'forbidden'});
+      }else{
+        let {rows} = await pool.query('SELECT role FROM users WHERE id = $1',[authorizedData.user.user_id]) 
+        if(rows[0].role == "banker" ){
+          const resu = await checkUserAvailability(email)
+          console.log(resu.length)
+          if(resu.length == 1){
+            pool.query('DELETE FROM users WHERE id =$1 ', [id], async(error, results) => {
+              if (error) {
+                throw error
+              }
+              console.log(results.rows)
+              response.status(200).json({"message":'Deleted the user'});
+            });
+          }else{
+            response.status(400).json({"message":'Bad request 1'})
+          } 
+        }else{
+          response.status(400).json({"message":'Bad request 2'})
+        }
+      }
+    })
+  }else{
+    response.status(404).json({"message":"user not avialble"})
+  }
+    
 };
 
 module.exports = { createUser, getUsers, getUserById, deleteUserById , userLogin};

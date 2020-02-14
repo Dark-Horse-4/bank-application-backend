@@ -41,7 +41,6 @@ function cache(req, res, next) {
         }
     });
 }
-
 // user actions
 app.post('/users/create/:role',userroutes.createUser);
 app.post('/users/login',userroutes.userLogin);

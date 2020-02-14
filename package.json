@@ -4,7 +4,7 @@
   "description": "learning nodejs restful api",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "mocha",
     "start": "nodemon server.js"
   },
   "keywords": [
@@ -17,12 +17,20 @@
   "dependencies": {
     "@hapi/joi": "^17.1.0",
     "@sendgrid/mail": "^6.5.1",
+    "assert": "^2.0.0",
     "bcrypt": "^3.0.8",
     "body-parser": "^1.19.0",
+    "chai": "^4.2.0",
+    "chai-http": "^4.3.0",
+    "chai-json-schema": "^1.5.1",
     "cookie": "^0.4.0",
     "cookie-parser": "^1.4.4",
     "dotenv": "^8.2.0",
+    "expect": "^25.1.0",
     "express": "^4.17.1",
+    "jsonschema": "^1.2.5",
+    "jsonwebtoken": "^8.5.1",
+    "mocha": "^7.0.1",
     "moment": "^2.24.0",
     "moment-range": "^4.0.2",
     "morgan": "^1.9.1",
@@ -32,7 +40,12 @@
     "nodemailer-sendgrid-transport": "^0.2.0",
     "nodemon": "^2.0.2",
     "pg": "^7.17.1",
+    "randomstring": "^1.1.5",
     "redis": "^2.8.0",
-    "redis-server": "^1.2.2"
+    "redis-server": "^1.2.2",
+    "should": "^13.2.3"
+  },
+  "devDependencies": {
+    "supertest": "^4.0.2"
   }
 }
