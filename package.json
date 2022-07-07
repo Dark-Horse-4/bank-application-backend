@@ -31,7 +31,7 @@
     "jsonschema": "^1.2.5",
     "jsonwebtoken": "^8.5.1",
     "mocha": "^7.0.1",
-    "moment": "^2.24.0",
+    "moment": "^2.29.4",
     "moment-range": "^4.0.2",
     "morgan": "^1.9.1",
     "node-fetch": "^2.6.0",
